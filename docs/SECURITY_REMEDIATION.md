@@ -1,3 +1,37 @@
+# Security remediation — pass 5 (2026-07-11 re-audit completion)
+
+## Closed in this pass
+
+| Finding | Resolution |
+|---------|------------|
+| H-02 executionId in hook event | `ExecutionAllowed` emits `executionDigest`; watcher + store reconcile by digest |
+| H-03 server-side reserve binding | `GetSessionReserveSnapshot` + `reserveBudget` validates agent, intent, limits, validity |
+| H-09 watcher reorg depth | Block-by-block ingest with confirmation depth; cursor stores block hash |
+| H-10 Redis aggregate TTL | Session key TTL derived from `valid_until`; `KeepTTL` on partial release |
+| P0 coinbase lint/encore | Biome ignores video/scripts; `encore check` passes with sibling x402-guard build |
+| P0 CI x402-guard sibling | PR workflow checks out and builds x402-guard before typecheck |
+
+## Migrations required
+
+- `railguard-new`: `db/migrations/004_execution_digest.sql`
+- **Breaking**: `ExecutionAllowed` event signature changed — redeploy hook contract
+
+## Still open
+
+- P4 fault-injection integration tests (Postgres replay/budget/broadcast boundaries)
+- Canonical E2E (`e2e-happy-path.ps1`) with Docker + Foundry
+- `bun audit` dependency upgrades (lockfile regen blocked by vitest cache EPERM locally)
+
+## Test commands
+
+```powershell
+cd x402-guard; bun test
+cd railguard-new/signgate; go test ./...
+cd coinbase; bun run lint; bun test apps/api packages; encore check
+```
+
+---
+
 # Security remediation — pass 4 (2026-07-11 re-audit)
 
 ## Closed in this pass
@@ -25,11 +59,6 @@
 
 ## Still open
 
-- H-02 executionId in `ExecutionAllowed` event + watcher identity reconciliation
-- H-03 server-side reserve binding to full session snapshot
-- H-09 watcher reorg / confirmation depth
-- H-10 Redis aggregate TTL vs session lifetime
-- P0 coinbase lint/encore typecheck + dependency audit cleanup
 - P4 fault-injection integration tests
 
 ## Test commands
