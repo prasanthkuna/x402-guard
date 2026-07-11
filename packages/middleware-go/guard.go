@@ -49,6 +49,13 @@ func New(cfg GuardConfig) *Guard {
 
 func (g *Guard) Evaluate(ctx PaymentContext) (PolicyDecision, []string) {
 	rules := []string{}
+	if ctx.AmountAtomic == nil {
+		rules = append(rules, "amount.missing")
+		return DecisionBlock, rules
+	}
+	if ctx.AmountAtomic.Sign() <= 0 {
+		rules = append(rules, "amount.non_positive")
+	}
 	if ctx.AgentID != g.cfg.AgentID {
 		rules = append(rules, "agent.mismatch")
 	}

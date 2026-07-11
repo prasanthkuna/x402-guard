@@ -50,13 +50,16 @@ export interface GuardDecision {
   blocked: boolean;
 }
 
-export function parseResourceUrl(url: string): X402ResourceRef {
+export function parseResourceUrl(url: string, method = "GET"): X402ResourceRef {
   const parsed = new URL(url);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("resource URL must use http or https");
+  }
   return {
-    method: "GET",
+    method: method.trim().toUpperCase() || "GET",
     url,
     domain: parsed.hostname.toLowerCase(),
-    path: parsed.pathname,
+    path: parsed.pathname || "/",
   };
 }
 
@@ -72,3 +75,9 @@ export function stableStringify(value: unknown): string {
   }
   return JSON.stringify(value);
 }
+
+export {
+  InvalidPaymentContextError,
+  canonicalizeResource,
+  validatePaymentContext,
+} from "./validation.js";

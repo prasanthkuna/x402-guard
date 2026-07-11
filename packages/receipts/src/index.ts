@@ -70,7 +70,7 @@ export class ReceiptLedger {
   settle(previous: PaymentReceipt, txHash: string): PaymentReceipt {
     const payload = {
       receiptVersion: "x402-guard.v1" as const,
-      receiptId: previous.receiptId,
+      receiptId: `rcpt_settle_${randomUUID()}`,
       decision: previous.decision,
       triggeredRules: previous.triggeredRules,
       agentId: previous.agentId,

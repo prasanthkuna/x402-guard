@@ -4,6 +4,7 @@ import type {
   PolicyEvaluation,
   X402PaymentContext,
 } from "@x402-guard/core";
+import { canonicalizeResource } from "@x402-guard/core";
 
 export interface SpendRecord {
   agentId: string;
@@ -15,6 +16,9 @@ export class SpendTracker {
   private readonly records: SpendRecord[] = [];
 
   record(agentId: string, amountAtomic: bigint, atMs = Date.now()): void {
+    if (amountAtomic <= 0n) {
+      throw new Error("cannot record non-positive spend");
+    }
     this.records.push({ agentId, amountAtomic, atMs });
   }
 
@@ -62,6 +66,18 @@ export function evaluateAgentPolicy(
   const rules: string[] = [];
   const escalations: string[] = [];
 
+  if (ctx.amountAtomic <= 0n) {
+    rules.push("amount.non_positive");
+  }
+
+  let domain: string;
+  try {
+    domain = canonicalizeResource(ctx.resource).domain;
+  } catch {
+    rules.push("resource.invalid");
+    domain = ctx.resource.domain;
+  }
+
   if (ctx.agentId !== policy.agentId) {
     rules.push("agent.mismatch");
   }
@@ -70,7 +86,6 @@ export function evaluateAgentPolicy(
     rules.push("amount.per_call_cap");
   }
 
-  const domain = ctx.resource.domain;
   if (policy.blockedDomains.includes(domain)) {
     rules.push("resource.blocked_domain");
   }

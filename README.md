@@ -70,7 +70,7 @@ const pay = withSpendingPolicy(yourX402SignCallback, guard, (amount, url) => ({
 
 await pay(50_000n, "https://api.example.com/v1/data");
 console.log(guard.lastReceipt);
-guard.recordSettlement("0xabc...");
+guard.recordSettlement(guard.lastReceipt!.receiptId, "0xabc...");
 ```
 
 ## Monorepo packages

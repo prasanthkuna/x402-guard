@@ -4,6 +4,7 @@ import type {
   PolicyDecision,
   X402PaymentContext,
 } from "@x402-guard/core";
+import { validatePaymentContext } from "@x402-guard/core";
 import {
   ReplayGuard,
   SpendTracker,
@@ -24,7 +25,10 @@ export class PolicyViolationError extends Error {
 }
 
 export class ReplayDetectedError extends Error {
-  constructor(public readonly fingerprint: string) {
+  constructor(
+    public readonly fingerprint: string,
+    public readonly receipt?: PaymentReceipt,
+  ) {
     super(`Replay detected for fingerprint: ${fingerprint}`);
     this.name = "ReplayDetectedError";
   }
@@ -78,17 +82,19 @@ export class X402Guard {
   }
 
   async evaluate(ctx: X402PaymentContext): Promise<GuardDecision> {
-    const fingerprint = buildPaymentFingerprint(ctx);
+    const normalized = validatePaymentContext(ctx);
+    const fingerprint = buildPaymentFingerprint(normalized);
     if (this.replay.check(fingerprint)) {
-      throw new ReplayDetectedError(fingerprint);
+      const receipt = this.record(normalized, fingerprint, "block", ["replay.detected"]);
+      throw new ReplayDetectedError(fingerprint, receipt);
     }
 
-    const evaluation = evaluateAgentPolicy(ctx, this.options.policy, this.tracker);
+    const evaluation = evaluateAgentPolicy(normalized, this.options.policy, this.tracker);
 
     if (evaluation.decision === "escalate" && this.options.onEscalate) {
-      const approved = await this.options.onEscalate(ctx, evaluation.triggeredRules);
+      const approved = await this.options.onEscalate(normalized, evaluation.triggeredRules);
       if (!approved) {
-        const receipt = this.record(ctx, fingerprint, "escalate", evaluation.triggeredRules);
+        const receipt = this.record(normalized, fingerprint, "escalate", evaluation.triggeredRules);
         return {
           decision: "escalate",
           triggeredRules: evaluation.triggeredRules,
@@ -101,10 +107,10 @@ export class X402Guard {
     }
 
     const blocked = evaluation.decision !== "allow";
-    const receipt = this.record(ctx, fingerprint, evaluation.decision, evaluation.triggeredRules);
+    const receipt = this.record(normalized, fingerprint, evaluation.decision, evaluation.triggeredRules);
 
     if (!blocked) {
-      this.tracker.record(ctx.agentId, ctx.amountAtomic);
+      this.tracker.record(normalized.agentId, normalized.amountAtomic);
     }
 
     const decision: GuardDecision = {
@@ -117,12 +123,23 @@ export class X402Guard {
     return decision;
   }
 
-  recordSettlement(txHash: string): PaymentReceipt | undefined {
-    if (!this.lastReceipt) return undefined;
-    const settled = this.ledger.settle(this.lastReceipt, txHash);
+  recordSettlement(receiptId: string, txHash: string): PaymentReceipt | undefined {
+    const prior = this.receipts.find((entry) => entry.receiptId === receiptId);
+    if (!prior || prior.decision !== "allow" || prior.txHash) {
+      return undefined;
+    }
+    const settled = this.ledger.settle(prior, txHash);
     this.receipts.push(settled);
-    this.lastReceipt = settled;
+    if (this.lastReceipt?.receiptId === receiptId) {
+      this.lastReceipt = settled;
+    }
     return settled;
+  }
+
+  /** @deprecated Use recordSettlement(receiptId, txHash) */
+  recordLastSettlement(txHash: string): PaymentReceipt | undefined {
+    if (!this.lastReceipt) return undefined;
+    return this.recordSettlement(this.lastReceipt.receiptId, txHash);
   }
 
   exportAuditJsonl(): string {

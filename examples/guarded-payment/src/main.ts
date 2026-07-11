@@ -46,6 +46,7 @@ async function main() {
   console.log("receipt:", guard.lastReceipt);
 
   guard.recordSettlement(
+    guard.lastReceipt!.receiptId,
     "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
   );
   console.log("\n--- audit jsonl ---");

@@ -68,6 +68,17 @@ describe("evaluateAgentPolicy", () => {
     expect(result.decision).toBe("block");
     expect(result.triggeredRules.some((r) => r.includes("budget.window"))).toBe(true);
   });
+
+  it("blocks negative amounts", () => {
+    const policy = defaultDevPolicy("agent_demo");
+    const result = evaluateAgentPolicy(
+      { ...baseCtx(), amountAtomic: -100n },
+      policy,
+      new SpendTracker(),
+    );
+    expect(result.decision).toBe("block");
+    expect(result.triggeredRules).toContain("amount.non_positive");
+  });
 });
 
 describe("buildPaymentFingerprint", () => {
