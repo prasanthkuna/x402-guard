@@ -27,8 +27,23 @@ Addresses open ecosystem gaps:
 
 ## Install
 
+**npm** (after `@x402-guard` scope is published):
+
 ```bash
 npm install @x402-guard/middleware
+```
+
+**From source** (sibling monorepo):
+
+```bash
+git clone https://github.com/prasanthkuna/x402-guard.git
+cd x402-guard && npm install && npm run build
+```
+
+In your `package.json`:
+
+```json
+"@x402-guard/middleware": "file:../x402-guard/packages/middleware"
 ```
 
 ## Quick start

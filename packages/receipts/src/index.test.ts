@@ -39,4 +39,19 @@ describe("ReceiptLedger", () => {
     expect(second.previousHash).toBe(first.receiptHash);
     expect(second.receiptVersion).toBe("x402-guard.v1");
   });
+
+  it("settle chains txHash from prior receipt", () => {
+    const ledger = new ReceiptLedger();
+    const allowed = ledger.append({
+      decision: "allow",
+      triggeredRules: [],
+      context: ctx(),
+      fingerprint: "fp-1",
+      policyVersion: "v0.1.0",
+    });
+    const settled = ledger.settle(allowed, "0xabc");
+    expect(settled.txHash).toBe("0xabc");
+    expect(settled.previousHash).toBe(allowed.receiptHash);
+    expect(settled.receiptHash).not.toBe(allowed.receiptHash);
+  });
 });

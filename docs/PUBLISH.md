@@ -28,11 +28,19 @@ git push -u origin main
 
 ## npm (after GitHub)
 
-1. Claim `@x402-guard` org on npm
-2. Each package has `prepublishOnly: npm run build`
-3. Publish in order: core → policy → receipts → middleware
+1. Create npm org `@x402-guard` at https://www.npmjs.com/org/create
+2. Add repo secret `NPM_TOKEN` (Automation token with publish scope)
+3. Tag release — workflow `.github/workflows/release.yml` publishes all packages:
 
 ```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Or publish manually:
+
+```powershell
+npm login
 npm publish -w @x402-guard/core --access public
 npm publish -w @x402-guard/policy --access public
 npm publish -w @x402-guard/receipts --access public

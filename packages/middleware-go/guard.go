@@ -58,8 +58,15 @@ func (g *Guard) Evaluate(ctx PaymentContext) (PolicyDecision, []string) {
 	if len(rules) > 0 {
 		return DecisionBlock, rules
 	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
+	if g.cfg.WindowSeconds > 0 && time.Since(g.window) > time.Duration(g.cfg.WindowSeconds)*time.Second {
+		g.spent = map[string]*big.Int{}
+		g.window = time.Now()
+	}
+
 	if g.cfg.DailyLimit != nil {
 		current := g.spent[ctx.AgentID]
 		if current == nil {

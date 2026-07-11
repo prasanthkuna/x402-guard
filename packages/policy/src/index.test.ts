@@ -44,6 +44,30 @@ describe("evaluateAgentPolicy", () => {
     expect(result.decision).toBe("escalate");
     expect(result.triggeredRules).toContain("mandate.required");
   });
+
+  it("blocks blocked domain", () => {
+    const policy = defaultDevPolicy("agent_demo");
+    const ctx = {
+      ...baseCtx(),
+      resource: {
+        ...baseCtx().resource,
+        domain: "blocked.vendor",
+        url: "https://blocked.vendor/pay",
+      },
+    };
+    const result = evaluateAgentPolicy(ctx, policy, new SpendTracker());
+    expect(result.decision).toBe("block");
+    expect(result.triggeredRules).toContain("resource.blocked_domain");
+  });
+
+  it("blocks rolling window budget", () => {
+    const policy = defaultDevPolicy("agent_demo");
+    const tracker = new SpendTracker();
+    tracker.record("agent_demo", 9_950_000n);
+    const result = evaluateAgentPolicy(baseCtx(), policy, tracker);
+    expect(result.decision).toBe("block");
+    expect(result.triggeredRules.some((r) => r.includes("budget.window"))).toBe(true);
+  });
 });
 
 describe("buildPaymentFingerprint", () => {

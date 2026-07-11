@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseResourceUrl } from "@x402-guard/core";
 import { defaultDevPolicy } from "@x402-guard/policy";
-import { PolicyViolationError, X402Guard, withSpendingPolicy } from "./index.js";
+import { PolicyViolationError, ReplayDetectedError, X402Guard, withSpendingPolicy } from "./index.js";
 
 describe("X402Guard", () => {
   it("blocks over-limit payments before callback", async () => {
@@ -59,5 +59,21 @@ describe("X402Guard", () => {
     await expect(pay(9_000_000n, "https://api.example.com/v1/data")).rejects.toBeInstanceOf(
       PolicyViolationError,
     );
+  });
+
+  it("ReplayDetectedError on duplicate fingerprint", async () => {
+    const guard = new X402Guard({ policy: defaultDevPolicy("agent_demo") });
+    const ctx = {
+      agentId: "agent_demo",
+      payer: "0x1111111111111111111111111111111111111111",
+      payTo: "0x2222222222222222222222222222222222222222",
+      amountAtomic: 50_000n,
+      asset: "USDC",
+      network: "eip155:84532",
+      resource: parseResourceUrl("https://api.example.com/v1/data"),
+      idempotencyKey: "idem-1",
+    };
+    await guard.evaluate(ctx);
+    await expect(guard.evaluate(ctx)).rejects.toThrow(/Replay detected/);
   });
 });
