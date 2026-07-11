@@ -95,7 +95,7 @@ guard.recordSettlement(guard.lastReceipt!.receiptId, "0xabc...");
 | Repo | Role |
 |------|------|
 | [railguard-new](https://github.com/prasanthkuna/railguard-new) | ERC-7579 on-chain execution hook + SignGate |
-| Railguard CDP | Invoice-to-USDC business policy (private product) |
+| [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp) | Invoice-to-USDC CDP reconciliation (boundary #3) |
 
 ## Development
 
