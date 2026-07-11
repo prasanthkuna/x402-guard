@@ -1,0 +1,17 @@
+{
+  "name": "@x402-guard/example-guarded-payment",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@x402-guard/core": "0.1.0",
+    "@x402-guard/middleware": "0.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

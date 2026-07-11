@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "x402-guard Agent Policy",
+  "type": "object",
+  "required": ["agentId", "maxPerCallAtomic", "windows"],
+  "properties": {
+    "agentId": { "type": "string" },
+    "maxPerCallAtomic": { "type": "string", "pattern": "^[0-9]+$" },
+    "allowedDomains": { "type": "array", "items": { "type": "string" } },
+    "blockedDomains": { "type": "array", "items": { "type": "string" } },
+    "allowedPayees": { "type": "array", "items": { "type": "string" } },
+    "windows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["windowSeconds", "maxAmountAtomic"],
+        "properties": {
+          "windowSeconds": { "type": "integer", "minimum": 1 },
+          "maxAmountAtomic": { "type": "string", "pattern": "^[0-9]+$" }
+        }
+      }
+    },
+    "requireMandateAboveAtomic": { "type": "string", "pattern": "^[0-9]+$" }
+  }
+}

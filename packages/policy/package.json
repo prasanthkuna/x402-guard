@@ -1,0 +1,40 @@
+{
+  "name": "@x402-guard/policy",
+  "version": "0.1.0",
+  "description": "Deterministic agent payment policy for x402",
+  "license": "Apache-2.0",
+  "author": "Prashanth Kuna",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prasanthkuna/x402-guard.git",
+    "directory": "packages/policy"
+  },
+  "homepage": "https://github.com/prasanthkuna/x402-guard#readme",
+  "bugs": {
+    "url": "https://github.com/prasanthkuna/x402-guard/issues"
+  },
+  "keywords": ["x402", "agent", "payments", "policy", "web3"],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@x402-guard/core": "0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}

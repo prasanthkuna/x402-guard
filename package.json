@@ -1,0 +1,22 @@
+{
+  "name": "x402-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fail-closed policy, replay protection, and audit receipts for x402 agent payments",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "npm@10.9.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @x402-guard/core && npm run build -w @x402-guard/policy && npm run build -w @x402-guard/receipts && npm run build -w @x402-guard/middleware",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run build && npm run test"
+  }
+}
