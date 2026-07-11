@@ -10,6 +10,8 @@
 > **Start here:** [railguard-new PORTFOLIO](https://github.com/prasanthkuna/railguard-new/blob/master/docs/PORTFOLIO.md) — **send only this link** in outreach.  
 > This repo is **enforcement boundary #1** (pre-sign policy). Tag: `v0.1-reference`.
 
+![Railguard stack — three boundaries](https://raw.githubusercontent.com/prasanthkuna/railguard-new/master/assets/x-campaign/diagram-boundaries.png)
+
 x402 lets agents pay for HTTP resources instantly. It does not stop a compromised agent from draining a wallet. **x402-guard** sits between agent intent and signature — the production layer the protocol intentionally leaves out.
 
 Addresses open ecosystem gaps:
