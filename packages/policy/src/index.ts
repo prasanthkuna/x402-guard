@@ -145,3 +145,6 @@ export function defaultDevPolicy(agentId: string): AgentPolicyConfig {
     requireMandateAboveAtomic: 500_000n,
   };
 }
+
+export type { GuardStateStore, ReceiptStore, PersistedPaymentReceipt } from "./storage.js";
+export { InMemoryGuardStateStore } from "./storage.js";

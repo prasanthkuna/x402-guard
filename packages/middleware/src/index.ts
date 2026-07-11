@@ -10,6 +10,7 @@ import {
   SpendTracker,
   buildPaymentFingerprint,
   evaluateAgentPolicy,
+  InMemoryGuardStateStore,
 } from "@x402-guard/policy";
 import { ReceiptLedger, type PaymentReceipt } from "@x402-guard/receipts";
 
@@ -38,6 +39,7 @@ export interface X402GuardOptions {
   policy: AgentPolicyConfig;
   policyVersion?: string;
   replayTtlMs?: number;
+  stateStore?: import("@x402-guard/policy").GuardStateStore;
   onEscalate?: (ctx: X402PaymentContext, rules: string[]) => Promise<boolean>;
 }
 
@@ -73,21 +75,24 @@ export function withSpendingPolicy(
 export class X402Guard {
   private readonly tracker = new SpendTracker();
   private readonly replay: ReplayGuard;
+  private readonly stateStore: import("@x402-guard/policy").GuardStateStore;
   private readonly ledger = new ReceiptLedger();
   readonly receipts: PaymentReceipt[] = [];
   lastReceipt: PaymentReceipt | undefined;
 
   constructor(private readonly options: X402GuardOptions) {
     this.replay = new ReplayGuard(options.replayTtlMs ?? 300_000);
+    this.stateStore = options.stateStore ?? new InMemoryGuardStateStore();
   }
 
   async evaluate(ctx: X402PaymentContext): Promise<GuardDecision> {
     const normalized = validatePaymentContext(ctx);
     const fingerprint = buildPaymentFingerprint(normalized);
-    if (this.replay.check(fingerprint)) {
+    if (await this.stateStore.hasReplay(fingerprint)) {
       const receipt = this.record(normalized, fingerprint, "block", ["replay.detected"]);
       throw new ReplayDetectedError(fingerprint, receipt);
     }
+    await this.stateStore.markReplay(fingerprint, this.options.replayTtlMs ?? 300_000);
 
     const evaluation = evaluateAgentPolicy(normalized, this.options.policy, this.tracker);
 
@@ -111,6 +116,7 @@ export class X402Guard {
 
     if (!blocked) {
       this.tracker.record(normalized.agentId, normalized.amountAtomic);
+      await this.stateStore.recordSpend(normalized.agentId, normalized.amountAtomic);
     }
 
     const decision: GuardDecision = {
