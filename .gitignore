@@ -9,3 +9,8 @@ coverage/
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+
+# Private — local prep / notes (not for public repo)
+docs/private/
+notes/
+*.local.md
