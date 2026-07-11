@@ -6,8 +6,8 @@ import type {
 } from "@x402-guard/core";
 import { validatePaymentContext } from "@x402-guard/core";
 import {
+  authorizePayment,
   buildPaymentFingerprint,
-  evaluateAgentPolicyWithStore,
   InMemoryGuardStateStore,
 } from "@x402-guard/policy";
 import { ReceiptLedger, type PaymentReceipt } from "@x402-guard/receipts";
@@ -56,7 +56,8 @@ export function withSpendingPolicy(
   toContext: (amountAtomic: bigint, resourceUrl: string) => X402PaymentContext,
 ): PaymentCallback {
   return async (amountAtomic, resourceUrl) => {
-    const decision = await guard.evaluate(toContext(amountAtomic, resourceUrl));
+    const ctx = toContext(amountAtomic, resourceUrl);
+    const decision = await guard.evaluate(ctx);
     if (decision.blocked) {
       throw new PolicyViolationError("Payment blocked by x402-guard policy", decision, guard.lastReceipt!);
     }
@@ -66,11 +67,13 @@ export function withSpendingPolicy(
     if (callback) {
       const ok = await callback(amountAtomic, resourceUrl);
       if (ok) {
-        await guard.commitAllowedSpend(toContext(amountAtomic, resourceUrl));
+        await guard.commitAllowedSpend(ctx, decision.receiptId);
+      } else if (decision.authorizationId) {
+        await guard.releaseAuthorization(decision.authorizationId);
       }
       return ok;
     }
-    await guard.commitAllowedSpend(toContext(amountAtomic, resourceUrl));
+    await guard.commitAllowedSpend(ctx, decision.receiptId);
     return true;
   };
 }
@@ -78,6 +81,10 @@ export function withSpendingPolicy(
 export class X402Guard {
   private readonly stateStore: import("@x402-guard/policy").GuardStateStore;
   private readonly ledger = new ReceiptLedger();
+  private readonly authorizationByReceipt = new Map<
+    string,
+    { authorizationId: string; agentId: string; amountAtomic: bigint }
+  >();
   readonly receipts: PaymentReceipt[] = [];
   lastReceipt: PaymentReceipt | undefined;
 
@@ -85,53 +92,81 @@ export class X402Guard {
     this.stateStore = options.stateStore ?? new InMemoryGuardStateStore();
   }
 
-  /** Records spend after a payment callback succeeds (M-08). */
-  async commitAllowedSpend(ctx: X402PaymentContext): Promise<void> {
+  async releaseAuthorization(authorizationId: string): Promise<void> {
+    await this.stateStore.releaseAuthorization(authorizationId);
+  }
+
+  /** Commits a reserved authorization after payment succeeds (M-08 / C-02). */
+  async commitAllowedSpend(ctx: X402PaymentContext, receiptId?: string): Promise<void> {
     const normalized = validatePaymentContext(ctx);
-    await this.stateStore.recordSpend(normalized.agentId, normalized.amountAtomic);
+    const pending = receiptId ? this.authorizationByReceipt.get(receiptId) : undefined;
+    if (pending) {
+      await this.stateStore.commitAuthorization(
+        pending.authorizationId,
+        pending.agentId,
+        pending.amountAtomic,
+      );
+      this.authorizationByReceipt.delete(receiptId!);
+      return;
+    }
+    if (this.stateStore.recordSpend) {
+      await this.stateStore.recordSpend(normalized.agentId, normalized.amountAtomic);
+    }
   }
 
   async evaluate(ctx: X402PaymentContext): Promise<GuardDecision> {
     const normalized = validatePaymentContext(ctx);
     const fingerprint = buildPaymentFingerprint(normalized);
-    if (await this.stateStore.hasReplay(fingerprint)) {
-      const receipt = this.record(normalized, fingerprint, "block", ["replay.detected"]);
-      throw new ReplayDetectedError(fingerprint, receipt);
-    }
-    await this.stateStore.markReplay(fingerprint, this.options.replayTtlMs ?? 300_000);
+    let auth = await authorizePayment(this.stateStore, {
+      ctx: normalized,
+      policy: this.options.policy,
+      fingerprint,
+      replayTtlMs: this.options.replayTtlMs ?? 300_000,
+    });
 
-    const evaluation = await evaluateAgentPolicyWithStore(
-      normalized,
-      this.options.policy,
-      this.stateStore,
-    );
-
-    if (evaluation.decision === "escalate" && this.options.onEscalate) {
-      const approved = await this.options.onEscalate(normalized, evaluation.triggeredRules);
-      if (!approved) {
-        const receipt = this.record(normalized, fingerprint, "escalate", evaluation.triggeredRules);
-        return {
-          decision: "escalate",
-          triggeredRules: evaluation.triggeredRules,
-          receiptId: receipt.receiptId,
+    if (!auth.ok && auth.decision === "escalate" && this.options.onEscalate) {
+      const approved = await this.options.onEscalate(normalized, auth.triggeredRules);
+      if (approved) {
+        auth = await authorizePayment(this.stateStore, {
+          ctx: normalized,
+          policy: this.options.policy,
           fingerprint,
-          blocked: true,
-        };
+          replayTtlMs: this.options.replayTtlMs ?? 300_000,
+        });
       }
-      evaluation.decision = "allow";
     }
 
-    const blocked = evaluation.decision !== "allow";
-    const receipt = this.record(normalized, fingerprint, evaluation.decision, evaluation.triggeredRules);
+    if (!auth.ok) {
+      if (auth.triggeredRules.includes("replay.detected")) {
+        const receipt = this.record(normalized, fingerprint, "block", auth.triggeredRules);
+        throw new ReplayDetectedError(fingerprint, receipt);
+      }
+      const decision: PolicyDecision = auth.decision ?? "block";
+      const receipt = this.record(normalized, fingerprint, decision, auth.triggeredRules);
+      return {
+        decision,
+        triggeredRules: auth.triggeredRules,
+        receiptId: receipt.receiptId,
+        fingerprint,
+        blocked: decision !== "allow",
+      };
+    }
 
-    const decision: GuardDecision = {
-      decision: evaluation.decision,
-      triggeredRules: evaluation.triggeredRules,
+    const receipt = this.record(normalized, fingerprint, "allow", []);
+    this.authorizationByReceipt.set(receipt.receiptId, {
+      authorizationId: auth.authorization.authorizationId,
+      agentId: normalized.agentId,
+      amountAtomic: normalized.amountAtomic,
+    });
+
+    return {
+      decision: "allow",
+      triggeredRules: [],
       receiptId: receipt.receiptId,
       fingerprint,
-      blocked,
+      blocked: false,
+      authorizationId: auth.authorization.authorizationId,
     };
-    return decision;
   }
 
   recordSettlement(receiptId: string, txHash: string): PaymentReceipt | undefined {

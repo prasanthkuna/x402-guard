@@ -1,39 +1,41 @@
-# Security remediation — pass 3 (2026-07-11)
+# Security remediation — pass 4 (2026-07-11 re-audit)
 
 ## Closed in this pass
 
 | Finding | Resolution |
 |---------|------------|
-| H-10 durable state | `DbGuardStateStore` in coinbase (`x402_guard_replays`, `x402_guard_spends`); middleware uses `evaluateAgentPolicyWithStore` |
-| M-08 spend before callback | `evaluate()` policy-only; `commitAllowedSpend` / `withSpendingPolicy` records spend after success |
-| M-09 asset/network policy | `allowedAssets` / `allowedNetworks` enforced in policy evaluator |
-| H-05 reservation TTL | `SweepExpired` + ZSET expiry index; session aggregate key 24h safety TTL |
-| H-07 budget commit 1:1 | `CommitBudgetOnChainExecution` commits oldest open reservation only |
-| Reserve maxTotalSpend client trust | Server loads `max_total_spend` from sessions table |
-| Persistence errors ignored | SignGate handlers fail on `SaveReservation` / `SaveUserOp` errors |
-| CDP confirmation depth | Live mode waits for 1 on-chain confirmation via viem before `confirmed` |
-| M-14 approval binding | `approvals.policy_run_id` FK; `ensurePayable` rejects stale approvals |
-| M-15 separation of duties | `assertExecutorDiffersFromApprover` on execute |
-| PAYMENT_MODE encore check | Lazy `resolvePaymentMode()` — fails at execution, not module load |
-| Concurrency claim proof | `execution-claim.test.ts` — 100 parallel claimers, exactly one winner |
-| Workspace audit noise | Root workspaces exclude `apps/video` from default install graph |
+| C-01 mutable intent limits | Limits included in canonical intent hash; `SaveIntent` uses `ON CONFLICT DO NOTHING` |
+| C-02 x402 budget race | `authorizePayment` + atomic `reserveBudget` / `commitAuthorization` / `releaseAuthorization` |
+| C-03 post-broadcast failed | `broadcastedTxHash` tracking; post-broadcast errors become `unknown`, never `failed` |
+| H-01 reservation expiry leak | Durable ZSET member `reservationId\|sessionId\|amount`; metadata TTL 2x deadline |
+| H-04 idempotent reserve retry | `GetReservationIDByIdempotency` on duplicate `SaveReservation` |
+| H-05 approval binding | `policy_snapshot_hash`; execute uses non-persisting policy eval |
+| H-06 audit lock | `appendAudit` runs lock/head/insert/head-update in one DB transaction |
+| H-07 reverted tx confirmed | `waitForTransferConfirmation` requires `receipt.status === "success"` |
+| H-08 reconciler | `reconcileSubmittedPayments` cron every 5m |
+| H-11 replay race | `claimReplay` atomic insert in Postgres and in-memory store |
+| H-12 spend after confirm | x402 budget committed before `confirmed`; release on post-broadcast failure |
+| P0 E2E session register | `e2e-happy-path.ps1` sends `decisionId` body |
+| P0 forge fmt | `forge fmt` applied to hook + validator |
 
 ## Migrations required
 
-- `coinbase`: `006_approval_and_x402_state.up.sql` (plus prior 004–005)
-- `railguard-new`: `003_intent_limits_and_session_binding.sql` (unchanged)
+- `coinbase`: `007_atomic_budget_and_snapshot.up.sql`
+- `railguard-new`: intent hash change is backward-incompatible for existing ALLOW decisions on mutated intents
 
-## Still open (lower priority)
+## Still open
 
-- SignGate Redis spend sync from watcher (M-01)
-- Watcher reorg / confirmation depth on hook path
-- `bun audit` dependency upgrades (video app isolated; advisories remain in dev deps)
-- Postgres `GuardStateStore` in x402-guard OSS package (coinbase ships `DbGuardStateStore`)
+- H-02 executionId in `ExecutionAllowed` event + watcher identity reconciliation
+- H-03 server-side reserve binding to full session snapshot
+- H-09 watcher reorg / confirmation depth
+- H-10 Redis aggregate TTL vs session lifetime
+- P0 coinbase lint/encore typecheck + dependency audit cleanup
+- P4 fault-injection integration tests
 
 ## Test commands
 
 ```powershell
-cd x402-guard; bun test
+cd x402-guard; npm run build; bun test
 cd railguard-new/signgate; go test ./...
 cd coinbase; bun test apps/api
 ```

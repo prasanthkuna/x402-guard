@@ -154,6 +154,7 @@ export function defaultDevPolicy(agentId: string): AgentPolicyConfig {
   };
 }
 
-export type { GuardStateStore, ReceiptStore, PersistedPaymentReceipt } from "./storage.js";
-export { InMemoryGuardStateStore } from "./storage.js";
+export type { GuardStateStore, ReceiptStore, PersistedPaymentReceipt, PaymentAuthorization } from "./storage.js";
+export { InMemoryGuardStateStore, evaluatePolicyRules } from "./storage.js";
+export { authorizePayment } from "./authorize.js";
 export { evaluateAgentPolicyWithStore } from "./evaluateWithStore.js";

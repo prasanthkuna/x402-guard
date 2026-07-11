@@ -50,6 +50,7 @@ export interface GuardDecision {
   receiptId: string;
   fingerprint: string;
   blocked: boolean;
+  authorizationId?: string;
 }
 
 export function parseResourceUrl(url: string, method = "GET"): X402ResourceRef {
