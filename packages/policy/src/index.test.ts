@@ -69,6 +69,34 @@ describe("evaluateAgentPolicy", () => {
     expect(result.triggeredRules.some((r) => r.includes("budget.window"))).toBe(true);
   });
 
+  it("blocks disallowed asset", () => {
+    const policy = {
+      ...defaultDevPolicy("agent_demo"),
+      allowedAssets: ["USDC"],
+    };
+    const result = evaluateAgentPolicy(
+      { ...baseCtx(), asset: "WETH" },
+      policy,
+      new SpendTracker(),
+    );
+    expect(result.decision).toBe("block");
+    expect(result.triggeredRules).toContain("asset.not_allowlisted");
+  });
+
+  it("blocks disallowed network", () => {
+    const policy = {
+      ...defaultDevPolicy("agent_demo"),
+      allowedNetworks: ["eip155:84532"],
+    };
+    const result = evaluateAgentPolicy(
+      { ...baseCtx(), network: "eip155:1" },
+      policy,
+      new SpendTracker(),
+    );
+    expect(result.decision).toBe("block");
+    expect(result.triggeredRules).toContain("network.not_allowlisted");
+  });
+
   it("blocks negative amounts", () => {
     const policy = defaultDevPolicy("agent_demo");
     const result = evaluateAgentPolicy(

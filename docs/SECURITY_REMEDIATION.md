@@ -1,43 +1,39 @@
-# Security remediation — pass 2 (2026-07-11)
+# Security remediation — pass 3 (2026-07-11)
 
 ## Closed in this pass
 
 | Finding | Resolution |
 |---------|------------|
-| PAYMENT_MODE default demo | `apps/api/config.ts` fails module load without explicit `PAYMENT_MODE` |
-| C-04 partial | Validate → sign → transactional `AuthorizeSession`; limits from intent; `consumed_session_id` set |
-| H-02 calldata-only replay | Hook uses monotonic `sessionExecutionSeq` per session |
-| H-10 (interface) | `GuardStateStore` + `InMemoryGuardStateStore`; middleware `stateStore` option |
-| H-15 WorkOS tenant header | Org only from verified token claims |
-| H-14 audit fork | `pg_advisory_xact_lock` + `audit_chain_heads` serialized append |
-| Chain truth (partial) | `submitted → confirmed`; `execution_id` on payment intents |
+| H-10 durable state | `DbGuardStateStore` in coinbase (`x402_guard_replays`, `x402_guard_spends`); middleware uses `evaluateAgentPolicyWithStore` |
+| M-08 spend before callback | `evaluate()` policy-only; `commitAllowedSpend` / `withSpendingPolicy` records spend after success |
+| M-09 asset/network policy | `allowedAssets` / `allowedNetworks` enforced in policy evaluator |
+| H-05 reservation TTL | `SweepExpired` + ZSET expiry index; session aggregate key 24h safety TTL |
+| H-07 budget commit 1:1 | `CommitBudgetOnChainExecution` commits oldest open reservation only |
+| Reserve maxTotalSpend client trust | Server loads `max_total_spend` from sessions table |
+| Persistence errors ignored | SignGate handlers fail on `SaveReservation` / `SaveUserOp` errors |
+| CDP confirmation depth | Live mode waits for 1 on-chain confirmation via viem before `confirmed` |
+| M-14 approval binding | `approvals.policy_run_id` FK; `ensurePayable` rejects stale approvals |
+| M-15 separation of duties | `assertExecutorDiffersFromApprover` on execute |
+| PAYMENT_MODE encore check | Lazy `resolvePaymentMode()` — fails at execution, not module load |
+| Concurrency claim proof | `execution-claim.test.ts` — 100 parallel claimers, exactly one winner |
+| Workspace audit noise | Root workspaces exclude `apps/video` from default install graph |
 
 ## Migrations required
 
-- `coinbase`: `004_payment_execution_states.up.sql`, `005_confirmed_state_and_audit_head.up.sql`
-- `railguard-new`: `003_intent_limits_and_session_binding.sql`
+- `coinbase`: `006_approval_and_x402_state.up.sql` (plus prior 004–005)
+- `railguard-new`: `003_intent_limits_and_session_binding.sql` (unchanged)
 
-## SignGate session API (breaking)
+## Still open (lower priority)
 
-```json
-POST /v1/sessions/register
-{
-  "decisionId": "dec_...",
-  "sessionKey": "0x...",
-  "nonceKey": "12345",
-  "validAfter": 1,
-  "validUntil": 9999999999
-}
+- SignGate Redis spend sync from watcher (M-01)
+- Watcher reorg / confirmation depth on hook path
+- `bun audit` dependency upgrades (video app isolated; advisories remain in dev deps)
+- Postgres `GuardStateStore` in x402-guard OSS package (coinbase ships `DbGuardStateStore`)
+
+## Test commands
+
+```powershell
+cd x402-guard; bun test
+cd railguard-new/signgate; go test ./...
+cd coinbase; bun test apps/api
 ```
-
-All token/recipient/limits derived server-side from ALLOW decision intent.
-
-## Still open (10x backlog)
-
-- Postgres `GuardStateStore` implementation
-- SignGate reservation expiry + 1:1 reconciliation
-- CDP confirmation depth watcher before `confirmed`
-- Approval bound to policy snapshot hash
-- Separation of duties enforce distinct approver/executor
-- `bun audit` dependency upgrades
-- Concurrency proof tests (100 parallel executes)

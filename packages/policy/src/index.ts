@@ -104,6 +104,14 @@ export function evaluateAgentPolicy(
     rules.push("payee.not_allowlisted");
   }
 
+  if (policy.allowedAssets?.length && !policy.allowedAssets.map((a) => a.toLowerCase()).includes(ctx.asset.toLowerCase())) {
+    rules.push("asset.not_allowlisted");
+  }
+
+  if (policy.allowedNetworks?.length && !policy.allowedNetworks.includes(ctx.network)) {
+    rules.push("network.not_allowlisted");
+  }
+
   for (const window of policy.windows) {
     const spent = tracker.sumInWindow(ctx.agentId, window.windowSeconds);
     if (spent + ctx.amountAtomic > window.maxAmountAtomic) {
@@ -148,3 +156,4 @@ export function defaultDevPolicy(agentId: string): AgentPolicyConfig {
 
 export type { GuardStateStore, ReceiptStore, PersistedPaymentReceipt } from "./storage.js";
 export { InMemoryGuardStateStore } from "./storage.js";
+export { evaluateAgentPolicyWithStore } from "./evaluateWithStore.js";

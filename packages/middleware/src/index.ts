@@ -6,10 +6,8 @@ import type {
 } from "@x402-guard/core";
 import { validatePaymentContext } from "@x402-guard/core";
 import {
-  ReplayGuard,
-  SpendTracker,
   buildPaymentFingerprint,
-  evaluateAgentPolicy,
+  evaluateAgentPolicyWithStore,
   InMemoryGuardStateStore,
 } from "@x402-guard/policy";
 import { ReceiptLedger, type PaymentReceipt } from "@x402-guard/receipts";
@@ -66,23 +64,31 @@ export function withSpendingPolicy(
       throw new PolicyViolationError("Payment requires human approval", decision, guard.lastReceipt!);
     }
     if (callback) {
-      return callback(amountAtomic, resourceUrl);
+      const ok = await callback(amountAtomic, resourceUrl);
+      if (ok) {
+        await guard.commitAllowedSpend(toContext(amountAtomic, resourceUrl));
+      }
+      return ok;
     }
+    await guard.commitAllowedSpend(toContext(amountAtomic, resourceUrl));
     return true;
   };
 }
 
 export class X402Guard {
-  private readonly tracker = new SpendTracker();
-  private readonly replay: ReplayGuard;
   private readonly stateStore: import("@x402-guard/policy").GuardStateStore;
   private readonly ledger = new ReceiptLedger();
   readonly receipts: PaymentReceipt[] = [];
   lastReceipt: PaymentReceipt | undefined;
 
   constructor(private readonly options: X402GuardOptions) {
-    this.replay = new ReplayGuard(options.replayTtlMs ?? 300_000);
     this.stateStore = options.stateStore ?? new InMemoryGuardStateStore();
+  }
+
+  /** Records spend after a payment callback succeeds (M-08). */
+  async commitAllowedSpend(ctx: X402PaymentContext): Promise<void> {
+    const normalized = validatePaymentContext(ctx);
+    await this.stateStore.recordSpend(normalized.agentId, normalized.amountAtomic);
   }
 
   async evaluate(ctx: X402PaymentContext): Promise<GuardDecision> {
@@ -94,7 +100,11 @@ export class X402Guard {
     }
     await this.stateStore.markReplay(fingerprint, this.options.replayTtlMs ?? 300_000);
 
-    const evaluation = evaluateAgentPolicy(normalized, this.options.policy, this.tracker);
+    const evaluation = await evaluateAgentPolicyWithStore(
+      normalized,
+      this.options.policy,
+      this.stateStore,
+    );
 
     if (evaluation.decision === "escalate" && this.options.onEscalate) {
       const approved = await this.options.onEscalate(normalized, evaluation.triggeredRules);
@@ -113,11 +123,6 @@ export class X402Guard {
 
     const blocked = evaluation.decision !== "allow";
     const receipt = this.record(normalized, fingerprint, evaluation.decision, evaluation.triggeredRules);
-
-    if (!blocked) {
-      this.tracker.record(normalized.agentId, normalized.amountAtomic);
-      await this.stateStore.recordSpend(normalized.agentId, normalized.amountAtomic);
-    }
 
     const decision: GuardDecision = {
       decision: evaluation.decision,
@@ -171,6 +176,6 @@ export class X402Guard {
   }
 }
 
-export { AgentPolicyConfig, X402PaymentContext } from "@x402-guard/core";
+export type { AgentPolicyConfig, X402PaymentContext } from "@x402-guard/core";
 export { defaultDevPolicy } from "@x402-guard/policy";
 export type { PaymentReceipt } from "@x402-guard/receipts";

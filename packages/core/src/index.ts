@@ -38,6 +38,8 @@ export interface AgentPolicyConfig {
   allowedDomains: string[];
   blockedDomains: string[];
   allowedPayees: string[];
+  allowedAssets?: string[];
+  allowedNetworks?: string[];
   windows: SpendWindow[];
   requireMandateAboveAtomic?: bigint;
 }
