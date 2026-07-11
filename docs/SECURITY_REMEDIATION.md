@@ -1,3 +1,20 @@
+# Security remediation — pass 6 (2026-07-11 portfolio + proof)
+
+## Closed in this pass
+
+| Item | Resolution |
+|------|------------|
+| P0 portfolio packaging | `docs/PORTFOLIO.md`, `FAILURE_MODES_FIXED.md`, README front door |
+| P0 source of truth table | README + PORTFOLIO |
+| P0 CDP vs hook clarity | Documented in PORTFOLIO + railguard-cdp README |
+| P1 fault-injection (x402) | `packages/policy/src/fault-injection.test.ts` |
+| P1 payment state invariants | `coinbase/apps/api/paymentState.ts` + tests |
+| P1 watcher confirmation depth | `computeSafeHead` + unit test |
+| P2 HSM/MPC path | `THREAT_MODEL.md` production key custody table |
+| P2 CDP confirmation depth | `CDP_CONFIRMATION_DEPTH` env via `runtimeConfig.ts` |
+
+---
+
 # Security remediation — pass 5 (2026-07-11 re-audit completion)
 
 ## Closed in this pass
@@ -18,9 +35,15 @@
 
 ## Still open
 
-- P4 fault-injection integration tests (Postgres replay/budget/broadcast boundaries)
+- P4 Postgres integration fault-injection at full API boundaries (unit tests on primitives shipped in pass 6)
+- Deep reorg rewind state machine (confirmation depth configurable)
+- `bun audit` dependency upgrades in railguard-cdp non-deploy workspaces
+
+## Closed since pass 5
+
 - Canonical E2E (`e2e-happy-path.ps1`) with Docker + Foundry
-- `bun audit` dependency upgrades (lockfile regen blocked by vitest cache EPERM locally)
+- Linux `npm ci` / SDK lockfile sync
+- Coinbase `encore check` with sibling x402-guard build
 
 ## Test commands
 

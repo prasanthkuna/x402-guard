@@ -5,6 +5,8 @@
 
 **Fail-closed policy, replay protection, and audit receipts for x402 agent payments.**
 
+> **Railguard stack:** [railguard-new PORTFOLIO](https://github.com/prasanthkuna/railguard-new/blob/master/docs/PORTFOLIO.md) — start here for the full three-repo story. This repo is **enforcement boundary #1** (pre-sign policy).
+
 x402 lets agents pay for HTTP resources instantly. It does not stop a compromised agent from draining a wallet. **x402-guard** sits between agent intent and signature — the production layer the protocol intentionally leaves out.
 
 Addresses open ecosystem gaps:
