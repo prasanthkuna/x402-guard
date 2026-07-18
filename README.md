@@ -12,7 +12,9 @@
 
 ![Railguard stack — three boundaries](https://raw.githubusercontent.com/prasanthkuna/railguard-new/master/assets/x-campaign/diagram-boundaries.png)
 
-x402 lets agents pay for HTTP resources instantly. It does not stop a compromised agent from draining a wallet. **x402-guard** sits between agent intent and signature — the production layer the protocol intentionally leaves out.
+x402 lets agents pay for HTTP resources instantly. It does not stop a compromised agent from draining a wallet. **x402-guard** sits between agent intent and signature — durable multi-agent budget state, atomic reservations, crash recovery, and settlement reconciliation around x402 protocol hooks and payment identifiers.
+
+> x402 provides protocol hooks and payment identifiers. This project provides durable multi-agent budget state, atomic reservations, crash recovery and settlement reconciliation around those primitives.
 
 Addresses open ecosystem gaps:
 
@@ -24,13 +26,13 @@ Addresses open ecosystem gaps:
 
 | Concern | x402 core | x402-guard |
 |---------|-----------|------------|
-| Per-call spending caps | No | Yes |
-| Rolling budgets | No | Yes |
-| Domain / payee allowlists | No | Yes |
-| Replay / idempotency | No | Yes |
-| Audit receipts | No | JSONL hash chain |
-| AP2 mandate gate | No | Escalate path |
-| On-chain hard ceiling | No | [Railguard](https://github.com/prasanthkuna/railguard-new) hook (optional) |
+| Per-call spending caps | Implementer responsibility | Yes |
+| Rolling budgets | Implementer responsibility | Yes |
+| Domain / payee allowlists | Implementer responsibility | Yes |
+| Replay / idempotency hooks | Protocol identifiers | Durable multi-agent state + atomic claims |
+| Audit receipts | Implementer responsibility | JSONL hash chain |
+| AP2 mandate gate | Implementer responsibility | Escalate path |
+| On-chain hard ceiling | Implementer responsibility | [Railguard](https://github.com/prasanthkuna/railguard-new) hook (optional) |
 
 ## Install
 
