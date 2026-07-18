@@ -31,9 +31,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@x402-guard/core": "0.1.0",
-    "@x402-guard/policy": "0.1.0",
-    "@x402-guard/receipts": "0.1.0"
+    "@x402-guard/core": "*",
+    "@x402-guard/policy": "*",
+    "@x402-guard/receipts": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
