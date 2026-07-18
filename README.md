@@ -36,24 +36,20 @@ Addresses open ecosystem gaps:
 
 ## Install
 
-**npm** (after `@x402-guard` scope is published):
-
-```bash
-npm install @x402-guard/middleware
-```
-
-**From source** (sibling monorepo):
+> **Packages are currently consumed from source.** The public npm namespace (`@x402-guard/*`) has not been finalized or published.
 
 ```bash
 git clone https://github.com/prasanthkuna/x402-guard.git
 cd x402-guard && npm install && npm run build
 ```
 
-In your `package.json`:
+In your `package.json` (local path or monorepo sibling):
 
 ```json
 "@x402-guard/middleware": "file:../x402-guard/packages/middleware"
 ```
+
+When published, install will be `npm install @x402-guard/middleware`. Until then, use the path above.
 
 ## Quick start
 
